@@ -49,6 +49,12 @@ interface DailyForecast {
   pop: number;
 }
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 function App() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [searchCity, setSearchCity] = useState('');
@@ -63,6 +69,8 @@ function App() {
   const [lat, setLat] = useState<number | null>(null);
   const [lon, setLon] = useState<number | null>(null);
   const [recentCities, setRecentCities] = useState<string[]>([]);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const API_KEY = '165a4fb76ef2c1da55986b2af224cc0d';
 
@@ -75,6 +83,12 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (showMapModal && lat && lon) {
+      setTimeout(() => initializeMap(), 100);
+    }
+  }, [showMapModal, lat, lon]);
+
   const loadRecentCities = () => {
     const stored = localStorage.getItem('recentCities');
     if (stored) {
@@ -86,6 +100,71 @@ function App() {
     const updated = [city, ...recentCities.filter(c => c.toLowerCase() !== city.toLowerCase())].slice(0, 5);
     setRecentCities(updated);
     localStorage.setItem('recentCities', JSON.stringify(updated));
+  };
+
+  const fetchWeatherByCoords = async (latitude: number, longitude: number) => {
+    setLoading(true);
+    setLocationLoading(false);
+    try {
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${API_KEY}`
+      );
+      const data = await response.json();
+      if (response.ok) {
+        setWeatherData(data);
+        setCurrentCity(data.name);
+        setLat(data.coord.lat);
+        setLon(data.coord.lon);
+        addRecentCity(data.name);
+        fetchForecast(data.coord.lat, data.coord.lon);
+      } else {
+        alert('Unable to fetch weather for your location');
+      }
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+      alert('Failed to fetch weather data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        fetchWeatherByCoords(latitude, longitude);
+      },
+      (error) => {
+        setLocationLoading(false);
+        console.error('Error getting location:', error);
+        alert('Unable to retrieve your location. Please enable location services.');
+      }
+    );
+  };
+
+  const initializeMap = () => {
+    if (!window.google || !lat || !lon) return;
+
+    const mapElement = document.getElementById('weather-map');
+    if (!mapElement) return;
+
+    const map = new window.google.maps.Map(mapElement, {
+      center: { lat, lng: lon },
+      zoom: 10,
+      mapTypeId: 'terrain',
+    });
+
+    new window.google.maps.Marker({
+      position: { lat, lng: lon },
+      map,
+      title: currentCity,
+    });
   };
 
   const fetchWeather = async (city: string) => {
@@ -208,25 +287,25 @@ function App() {
   };
 
   return (
-    <div className={`min-h-screen p-8 transition-colors duration-300 ${
+    <div className={`min-h-screen p-4 md:p-8 transition-colors duration-300 ${
       isDarkMode ? 'bg-gradient-to-br from-slate-800 to-slate-900' : 'bg-gradient-to-br from-blue-50 to-blue-100'
     }`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className={`rounded-3xl p-6 mb-6 shadow-lg ${
+        <div className={`rounded-3xl p-4 md:p-6 mb-6 shadow-lg ${
           isDarkMode ? 'bg-slate-700/50' : 'bg-white/80'
         } backdrop-blur-sm`}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 rounded-xl">
-                <Sun className="w-8 h-8 text-white" />
+                <Sun className="w-6 md:w-8 h-6 md:h-8 text-white" />
               </div>
-              <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+              <h1 className={`text-2xl md:text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                 LiveWeather
               </h1>
             </div>
 
-            <form onSubmit={handleSearch} className="flex-1 max-w-md">
+            <form onSubmit={handleSearch} className="w-full lg:flex-1 lg:max-w-md">
               <div className="relative">
                 <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
@@ -245,28 +324,29 @@ function App() {
               </div>
             </form>
 
-            <div className="flex items-center gap-4">
-              <div className={`text-right ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                <div className="text-sm font-medium">Current Date & Time</div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
+              <div className={`text-left sm:text-right ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <div className="text-xs md:text-sm font-medium">Current Date & Time</div>
                 <div className="text-xs">{formatDateTime(currentDateTime)}</div>
               </div>
               <button
-                onClick={() => fetchWeather('Chennai')}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+                onClick={useMyLocation}
+                disabled={locationLoading}
+                className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 md:px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
-                Use My Location
+                {locationLoading ? 'Getting Location...' : 'Use My Location'}
               </button>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Recent Cities Sidebar */}
-          <div className={`col-span-3 rounded-3xl p-6 shadow-lg ${
+          <div className={`lg:col-span-3 rounded-3xl p-4 md:p-6 shadow-lg ${
             isDarkMode ? 'bg-slate-700/50' : 'bg-white/80'
           } backdrop-blur-sm`}>
-            <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+            <h2 className={`text-xl md:text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
               Recent Cities
             </h2>
             <div className="space-y-3">
@@ -302,37 +382,29 @@ function App() {
           </div>
 
           {/* Main Weather Display */}
-          <div className={`col-span-6 rounded-3xl p-8 shadow-lg ${
+          <div className={`lg:col-span-6 rounded-3xl p-6 md:p-8 shadow-lg ${
             isDarkMode ? 'bg-slate-700/50' : 'bg-white/80'
           } backdrop-blur-sm`}>
             {loading ? (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full min-h-[300px]">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
               </div>
             ) : weatherData ? (
               <div className="flex flex-col items-center">
                 <div className="mb-8">{getWeatherIcon()}</div>
-                <h2 className={`text-5xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                <h2 className={`text-3xl md:text-5xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                   {currentCity}
                 </h2>
-                <div className={`text-8xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`text-6xl md:text-8xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   {Math.round(weatherData.main.temp)}°C
                 </div>
-                <div className="flex items-center gap-8 text-center">
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 text-center">
                   <div>
-                    <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                    <div className={`text-lg md:text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                       {weatherData.weather[0].main}
                     </div>
                     <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                       Feels Like {Math.round(weatherData.main.feels_like)}°C
-                    </div>
-                  </div>
-                  <div>
-                    <div className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                      Feels
-                    </div>
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {Math.round(weatherData.main.feels_like)}°C
                     </div>
                   </div>
                 </div>
@@ -341,66 +413,66 @@ function App() {
           </div>
 
           {/* Weather Details Sidebar */}
-          <div className={`col-span-3 rounded-3xl p-6 shadow-lg ${
+          <div className={`lg:col-span-3 rounded-3xl p-4 md:p-6 shadow-lg ${
             isDarkMode ? 'bg-slate-700/50' : 'bg-white/80'
-          } backdrop-blur-sm space-y-6`}>
+          } backdrop-blur-sm space-y-4 md:space-y-6`}>
             {weatherData && (
               <>
                 <div className="flex items-center gap-4">
-                  <Droplets className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <Droplets className={`w-6 md:w-8 h-6 md:h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <div>
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Humidity:</div>
-                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Humidity:</div>
+                    <div className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       {weatherData.main.humidity}%
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <Wind className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <Wind className={`w-6 md:w-8 h-6 md:h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <div>
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Wind:</div>
-                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Wind:</div>
+                    <div className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       {Math.round(weatherData.wind.speed * 3.6)} km/h
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <Gauge className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <Gauge className={`w-6 md:w-8 h-6 md:h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <div>
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Pressure:</div>
-                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Pressure:</div>
+                    <div className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       {weatherData.main.pressure} hPa
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <Eye className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <Eye className={`w-6 md:w-8 h-6 md:h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <div>
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Visibility:</div>
-                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Visibility:</div>
+                    <div className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       {(weatherData.visibility / 1000).toFixed(1)} km
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <Sunrise className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <Sunrise className={`w-6 md:w-8 h-6 md:h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <div>
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sunrise:</div>
-                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sunrise:</div>
+                    <div className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       {formatTime(weatherData.sys.sunrise)}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <Sunset className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <Sunset className={`w-6 md:w-8 h-6 md:h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <div>
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sunset:</div>
-                    <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className={`text-xs md:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sunset:</div>
+                    <div className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       {formatTime(weatherData.sys.sunset)}
                     </div>
                   </div>
@@ -411,8 +483,8 @@ function App() {
         </div>
 
         {/* Bottom Controls */}
-        <div className="grid grid-cols-12 gap-6 mt-6">
-          <div className={`col-span-3 rounded-3xl p-6 shadow-lg ${
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+          <div className={`lg:col-span-3 rounded-3xl p-4 md:p-6 shadow-lg ${
             isDarkMode ? 'bg-slate-700/50' : 'bg-white/80'
           } backdrop-blur-sm`}>
             <div className="flex items-center justify-between">
@@ -429,15 +501,18 @@ function App() {
                 )}
               </button>
             </div>
-            <button className="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-medium transition-colors">
+            <button
+              onClick={() => setShowMapModal(true)}
+              className="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 md:px-6 py-3 rounded-xl font-medium transition-colors"
+            >
               Map View
             </button>
           </div>
 
-          <div className={`col-span-6 grid grid-cols-2 gap-6`}>
+          <div className={`lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-6`}>
             <button
               onClick={() => setShowHourlyModal(true)}
-              className={`rounded-3xl p-6 shadow-lg ${
+              className={`rounded-3xl p-4 md:p-6 shadow-lg ${
                 isDarkMode ? 'bg-slate-700/50 hover:bg-slate-600/50' : 'bg-white/80 hover:bg-white'
               } backdrop-blur-sm transition-all cursor-pointer`}
             >
@@ -446,7 +521,7 @@ function App() {
                   <MapPin className="w-6 h-6 text-gray-600" />
                 </div>
                 <div>
-                  <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                  <h3 className={`text-lg md:text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                     Hourly Forecast
                   </h3>
                 </div>
@@ -455,7 +530,7 @@ function App() {
 
             <button
               onClick={() => setShowDailyModal(true)}
-              className={`rounded-3xl p-6 shadow-lg ${
+              className={`rounded-3xl p-4 md:p-6 shadow-lg ${
                 isDarkMode ? 'bg-slate-700/50 hover:bg-slate-600/50' : 'bg-white/80 hover:bg-white'
               } backdrop-blur-sm transition-all cursor-pointer`}
             >
@@ -464,7 +539,7 @@ function App() {
                   <span className="text-2xl font-bold text-gray-600">7</span>
                 </div>
                 <div>
-                  <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                  <h3 className={`text-lg md:text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                     7 Day Forecast
                   </h3>
                 </div>
@@ -476,11 +551,11 @@ function App() {
         {/* Hourly Forecast Modal */}
         {showHourlyModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className={`rounded-3xl p-8 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto ${
+            <div className={`rounded-3xl p-6 md:p-8 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto ${
               isDarkMode ? 'bg-slate-800' : 'bg-white'
             }`}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                <h2 className={`text-2xl md:text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                   Hourly Forecast
                 </h2>
                 <button
@@ -493,7 +568,7 @@ function App() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 {hourlyForecast.map((hour, index) => (
                   <div
                     key={index}
@@ -538,11 +613,11 @@ function App() {
         {/* 7 Day Forecast Modal */}
         {showDailyModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className={`rounded-3xl p-8 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto ${
+            <div className={`rounded-3xl p-6 md:p-8 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto ${
               isDarkMode ? 'bg-slate-800' : 'bg-white'
             }`}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                <h2 className={`text-2xl md:text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                   7 Day Forecast
                 </h2>
                 <button
@@ -559,12 +634,12 @@ function App() {
                 {dailyForecast.map((day, index) => (
                   <div
                     key={index}
-                    className={`rounded-2xl p-6 flex items-center justify-between ${
+                    className={`rounded-2xl p-4 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
                       isDarkMode ? 'bg-slate-700' : 'bg-gray-50'
                     }`}
                   >
                     <div className="flex items-center gap-4 flex-1">
-                      <div className={`text-lg font-semibold w-32 ${
+                      <div className={`text-base md:text-lg font-semibold w-24 md:w-32 ${
                         isDarkMode ? 'text-white' : 'text-gray-800'
                       }`}>
                         {index === 0
@@ -573,7 +648,7 @@ function App() {
                               weekday: 'long',
                             })}
                       </div>
-                      <div className={`text-sm ${
+                      <div className={`text-xs md:text-sm ${
                         isDarkMode ? 'text-gray-400' : 'text-gray-500'
                       }`}>
                         {new Date(day.dt * 1000).toLocaleDateString('en-US', {
@@ -583,29 +658,29 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                       <div className="flex items-center gap-2">
-                        {getWeatherIcon(day.weather[0].main, 'w-8 h-8')}
-                        <span className={`text-sm capitalize ${
+                        {getWeatherIcon(day.weather[0].main, 'w-6 h-6 md:w-8 md:h-8')}
+                        <span className={`text-xs md:text-sm capitalize ${
                           isDarkMode ? 'text-gray-300' : 'text-gray-600'
                         }`}>
                           {day.weather[0].description}
                         </span>
                       </div>
 
-                      <div className={`text-sm ${
+                      <div className={`text-xs md:text-sm ${
                         isDarkMode ? 'text-blue-400' : 'text-blue-600'
                       }`}>
                         {Math.round(day.pop * 100)}%
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className={`text-lg font-semibold ${
+                        <span className={`text-base md:text-lg font-semibold ${
                           isDarkMode ? 'text-white' : 'text-gray-900'
                         }`}>
                           {Math.round(day.temp.max)}°
                         </span>
-                        <span className={`text-lg ${
+                        <span className={`text-base md:text-lg ${
                           isDarkMode ? 'text-gray-400' : 'text-gray-500'
                         }`}>
                           {Math.round(day.temp.min)}°
@@ -615,6 +690,39 @@ function App() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Map View Modal */}
+        {showMapModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`rounded-3xl p-6 md:p-8 shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden ${
+              isDarkMode ? 'bg-slate-800' : 'bg-white'
+            }`}>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className={`text-2xl md:text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                    Map View
+                  </h2>
+                  <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {currentCity}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowMapModal(false)}
+                  className={`p-2 rounded-xl ${
+                    isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <X className={`w-6 h-6 ${isDarkMode ? 'text-white' : 'text-gray-800'}`} />
+                </button>
+              </div>
+
+              <div
+                id="weather-map"
+                className="w-full h-[400px] md:h-[500px] rounded-2xl"
+              ></div>
             </div>
           </div>
         )}
