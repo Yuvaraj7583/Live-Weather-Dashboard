@@ -71,6 +71,8 @@ function App() {
   const [recentCities, setRecentCities] = useState<string[]>([]);
   const [showMapModal, setShowMapModal] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [mapMarkers, setMapMarkers] = useState<any[]>([]);
+  const [mapInstance, setMapInstance] = useState<any>(null);
 
   const API_KEY = '165a4fb76ef2c1da55986b2af224cc0d';
 
@@ -157,14 +159,96 @@ function App() {
     const map = new window.google.maps.Map(mapElement, {
       center: { lat, lng: lon },
       zoom: 10,
-      mapTypeId: 'terrain',
+      mapTypeId: 'hybrid',
+      tilt: 45,
+      rotateControl: true,
+      mapTypeControl: true,
+      streetViewControl: true,
+      fullscreenControl: true,
+      zoomControl: true,
+      gestureHandling: 'greedy',
     });
 
-    new window.google.maps.Marker({
+    setMapInstance(map);
+
+    const marker = new window.google.maps.Marker({
       position: { lat, lng: lon },
       map,
       title: currentCity,
+      animation: window.google.maps.Animation.DROP,
     });
+
+    setMapMarkers([marker]);
+
+    map.addListener('click', (event: any) => {
+      handleMapClick(event.latLng, map);
+    });
+  };
+
+  const handleMapClick = async (latLng: any, map: any) => {
+    const clickedLat = latLng.lat();
+    const clickedLng = latLng.lng();
+
+    mapMarkers.forEach(marker => marker.setMap(null));
+
+    const newMarker = new window.google.maps.Marker({
+      position: { lat: clickedLat, lng: clickedLng },
+      map,
+      animation: window.google.maps.Animation.BOUNCE,
+    });
+
+    setTimeout(() => {
+      newMarker.setAnimation(null);
+    }, 2000);
+
+    setMapMarkers([newMarker]);
+
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode(
+        { location: { lat: clickedLat, lng: clickedLng } },
+        async (results: any, status: any) => {
+          if (status === 'OK' && results[0]) {
+            let cityName = '';
+
+            for (const component of results[0].address_components) {
+              if (component.types.includes('locality')) {
+                cityName = component.long_name;
+                break;
+              }
+              if (component.types.includes('administrative_area_level_2')) {
+                cityName = component.long_name;
+              }
+              if (!cityName && component.types.includes('administrative_area_level_1')) {
+                cityName = component.long_name;
+              }
+            }
+
+            if (cityName) {
+              newMarker.setTitle(cityName);
+
+              const infoWindow = new window.google.maps.InfoWindow({
+                content: `<div style="padding: 8px;"><strong>${cityName}</strong><br/>Loading weather...</div>`,
+              });
+              infoWindow.open(map, newMarker);
+
+              await fetchWeatherByCoords(clickedLat, clickedLng);
+
+              setTimeout(() => {
+                infoWindow.close();
+              }, 3000);
+            } else {
+              alert('Unable to identify city at this location. Please try clicking on a city or town.');
+            }
+          } else {
+            alert('Unable to get location information. Please try another location.');
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error getting location:', error);
+      alert('Failed to get location details');
+    }
   };
 
   const fetchWeather = async (city: string) => {
@@ -719,9 +803,20 @@ function App() {
                 </button>
               </div>
 
+              <div className="mb-4">
+                <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  <p className="mb-2 font-semibold">Click anywhere on the map to get weather for that location.</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>Use two fingers to rotate and tilt the map (on mobile)</li>
+                    <li>Hold Shift + drag to rotate (on desktop)</li>
+                    <li>Use the rotate control in the bottom right corner</li>
+                    <li>Switch between map types using the controls</li>
+                  </ul>
+                </div>
+              </div>
               <div
                 id="weather-map"
-                className="w-full h-[400px] md:h-[500px] rounded-2xl"
+                className="w-full h-[400px] md:h-[500px] rounded-2xl border-4 border-blue-500/20"
               ></div>
             </div>
           </div>
