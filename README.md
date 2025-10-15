@@ -122,7 +122,7 @@ This project has not licensed by anyone.
 
 **Author:** Yuvaraj  
 **GitHub:** [Yuvaraj7583](https://github.com/Yuvaraj7583/Live-Weather-Dashboard/)  
-**Deployed Link:** [🌐 Live Weather Dashboard on Netlify](https://your-netlify-link.netlify.app)
+**Deployed Link:** [🌐 Live Weather Dashboard on Netlify](https://live-weather-dashboard-01.netlify.app/)
 
 ---
 
