@@ -94,3 +94,41 @@ Add screenshots of your project in a folder named screenshots/ in your repositor
 4. 7 Day Forecast:
 ![7 day forecast](https://github.com/Yuvaraj7583/Live-Weather-Dashboard/blob/main/screenshots/Screenshot%202025-10-07%20071512.png)
 
+## 🌐 API Documentation
+
+This project uses the OpenWeather API
+Example API call:
+```
+https://api.openweathermap.org/data/2.5/weather?q=Chennai&appid=YOUR_API_KEY&units=metric
+```
+## ⚡ Challenges & Solutions
+
+| Challenge             | Solution                                          |
+| --------------------- | ------------------------------------------------- |
+| Handling API errors   | Added user-friendly error messages                |
+| Mobile responsiveness | Used Tailwind CSS utilities                       |
+| Fast builds           | Used Vite.js for quick bundling and hot reloading |
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create a new branch (git checkout -b feature-branch)
+3. Commit your changes (git commit -m "Add new feature")
+4. Push the branch (git push origin feature-branch)
+5. Create a Pull Request
+
+## 📜 License
+
+This project has not licensed by anyone.
+---
+
+## 📧 Contact
+
+**Author:** Yuvaraj  
+**GitHub:** [Yuvaraj7583](https://github.com/Yuvaraj7583/Live-Weather-Dashboard/)  
+**Deployed Link:** [🌐 Live Weather Dashboard on Netlify](https://your-netlify-link.netlify.app)
+
+---
+
+
+
