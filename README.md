@@ -68,10 +68,17 @@ It uses the **OpenWeather API** and provides data such as temperature, humidity,
 ## 🔑 Configuration
 
 Create a .env file in the root of your project and add my API KEY:    
-    ```ini
     
      VITE_OPENWEATHER_API_KEY=My_api_key
 
 ## 🖥️ Usage
 
+1. Enter the city name in the search bar.
 
+2. Press Enter or click Search.
+
+3. View live temperature, humidity, and weather conditions.
+
+## 🖼️ Screenshots
+
+Add screenshots of your project in a folder named screenshots/ in your repository, then reference them like this:
