@@ -82,5 +82,15 @@ Create a .env file in the root of your project and add my API KEY:
 ## 🖼️ Screenshots
 
 Add screenshots of your project in a folder named screenshots/ in your repository, then reference them like this:
+1. HomePage:
 ![Homepage](https://github.com/Yuvaraj7583/Live-Weather-Dashboard/blob/main/screenshots/Screenshot%202025-10-10%20201413.png)
+
+2. WeatherResult:
+![Weather Result](https://github.com/Yuvaraj7583/Live-Weather-Dashboard/blob/main/screenshots/Screenshot%202025-10-08%20060650.png)
+
+3. BlackTheme:
+![BlackTheme](https://github.com/Yuvaraj7583/Live-Weather-Dashboard/blob/main/screenshots/Screenshot%202025-10-07%20071512.png)
+
+4. 7 Day Forecast:
+![7 day forecast](https://github.com/Yuvaraj7583/Live-Weather-Dashboard/blob/main/screenshots/Screenshot%202025-10-07%20071512.png)
 
