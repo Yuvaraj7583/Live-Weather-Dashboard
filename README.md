@@ -67,11 +67,11 @@ It uses the **OpenWeather API** and provides data such as temperature, humidity,
 
 ## 🔑 Configuration
 
-Create a .env file in the root of your project and add my API KEY:
-    ```bash
-    VITE_OPENWEATHER_API_KEY=My_api_key
+Create a .env file in the root of your project and add my API KEY:    
+    ```ini
+    
+     VITE_OPENWEATHER_API_KEY=My_api_key
 
 ## 🖥️ Usage
-
 
 
