@@ -52,4 +52,24 @@ It uses the **OpenWeather API** and provides data such as temperature, humidity,
 1. Clone this repository:
    ```bash
    git clone https://github.com/Yuvaraj7583/Live-Weather-Dashboard.git
-2. Navigate  
+2. Navigate to the project folder:
+   ```bash
+   cd Live-Weather-Dashboard
+3. Install dependencies:
+   ```bash
+   npm install
+4. Start the development server:
+   ```bash
+   npm run dev
+5. Open the app in your browser at:
+   ```bash
+   http://localhost:5173
+
+## 🔑 Configuration
+
+Create a .env file in the root of your project and add my API KEY:
+
+```bash
+VITE_OPENWEATHER_API_KEY=My_api_key
+
+
