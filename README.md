@@ -1,10 +1,6 @@
 # 🌦️ Live Weather Dashboard
 A responsive React + Vite web app that displays real-time weather data using the OpenWeather API.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/Yuvaraj7583/Live-Weather-Dashboard)
-
----
+--
 
 ## 📑 Table of Contents
 - [About](#about)
