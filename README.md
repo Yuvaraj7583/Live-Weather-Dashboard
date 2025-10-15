@@ -82,3 +82,5 @@ Create a .env file in the root of your project and add my API KEY:
 ## 🖼️ Screenshots
 
 Add screenshots of your project in a folder named screenshots/ in your repository, then reference them like this:
+
+![Homepage](screenshots/
