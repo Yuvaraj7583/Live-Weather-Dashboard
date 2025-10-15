@@ -52,4 +52,4 @@ It uses the **OpenWeather API** and provides data such as temperature, humidity,
 1. Clone this repository:
    ```bash
    git clone https://github.com/Yuvaraj7583/Live-Weather-Dashboard.git
-  
+2. Navigate  
